@@ -8,9 +8,23 @@ import os
 # ============ INIT APP ============
 app = Flask(__name__)
 app.secret_key = 'tradepass-secret-key-2024-change-this-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tradepass.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# ============ DATABASE CONFIG FOR RAILWAY ============
+# Get database URL from Railway environment or use SQLite locally
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # Fix Railway PostgreSQL URL format
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"✅ Using PostgreSQL from Railway")
+else:
+    # Fallback to SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tradepass.db'
+    print("⚠️ Using SQLite (local development only)")
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # ============ DATABASE MODELS ============
@@ -34,6 +48,15 @@ class Click(db.Model):
     plan = db.Column(db.String(20))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     click_id = db.Column(db.String(36))
+
+# ============ CREATE TABLES ON STARTUP ============
+def init_db():
+    """Create database tables if they don't exist"""
+    with app.app_context():
+        db.create_all()
+        print("✅ Database tables created/verified")
+        print(f"📊 Total visitors: {Visitor.query.count()}")
+        print(f"🖱️ Total clicks: {Click.query.count()}")
 
 # ============ ADMIN CREDENTIALS ============
 ADMIN_EMAIL = "tragene@gmail.com"
@@ -195,9 +218,19 @@ def track_click():
 @app.route('/coming-soon')
 def coming_soon():
     """Coming soon page"""
-    return "<h1>Coming Soon or technical issue</h1>"
+    return "<h1>Coming Soon - This is a validation test</h1>"
 
 # ============ ADMIN ROUTES ============
+@app.route('/login')
+def public_login():
+    """Public login redirect"""
+    return redirect('/admin/login')
+
+@app.route('/admin')
+def admin_redirect():
+    """Admin home redirect"""
+    return redirect('/admin/login')
+
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     """Admin login page - CLEAN NO BRANDING"""
@@ -224,147 +257,24 @@ def admin_login():
         <title>Login</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-            
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                background: #0f172a;
-                height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-            
-            .login-box {
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 12px;
-                padding: 40px;
-                width: 100%;
-                max-width: 380px;
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-            }
-            
-            .login-header {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-            
-            .login-icon {
-                width: 50px;
-                height: 50px;
-                background: rgba(74, 222, 128, 0.1);
-                border: 1px solid rgba(74, 222, 128, 0.3);
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0 auto 15px;
-                color: #4ade80;
-                font-size: 20px;
-            }
-            
-            .login-header h2 {
-                color: white;
-                font-size: 20px;
-                font-weight: 500;
-            }
-            
-            .form-group {
-                margin-bottom: 20px;
-            }
-            
-            .form-label {
-                color: #94a3b8;
-                font-size: 14px;
-                margin-bottom: 6px;
-                display: block;
-            }
-            
-            .form-input {
-                width: 100%;
-                padding: 12px 14px;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 8px;
-                color: white;
-                font-size: 15px;
-                transition: all 0.2s;
-            }
-            
-            .form-input:focus {
-                outline: none;
-                border-color: #4ade80;
-                background: rgba(255, 255, 255, 0.08);
-            }
-            
-            .form-input::placeholder {
-                color: #64748b;
-            }
-            
-            .error-msg {
-                background: rgba(239, 68, 68, 0.1);
-                border: 1px solid rgba(239, 68, 68, 0.2);
-                color: #fca5a5;
-                padding: 10px;
-                border-radius: 8px;
-                margin-bottom: 15px;
-                font-size: 14px;
-                text-align: center;
-                display: ''' + ('block' if error else 'none') + ''';
-            }
-            
-            .login-btn {
-                width: 100%;
-                padding: 12px;
-                background: #4ade80;
-                border: none;
-                border-radius: 8px;
-                color: white;
-                font-size: 15px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.2s;
-                margin-top: 5px;
-            }
-            
-            .login-btn:hover {
-                background: #22c55e;
-                transform: translateY(-1px);
-            }
-            
-            .back-link {
-                text-align: center;
-                margin-top: 20px;
-            }
-            
-            .back-link a {
-                color: #94a3b8;
-                text-decoration: none;
-                font-size: 14px;
-                transition: color 0.2s;
-            }
-            
-            .back-link a:hover {
-                color: #4ade80;
-            }
-            
-            @media (max-width: 480px) {
-                .login-box {
-                    padding: 30px 25px;
-                }
-                
-                .login-icon {
-                    width: 45px;
-                    height: 45px;
-                    font-size: 18px;
-                }
-            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+            .login-box { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
+            .login-header { text-align: center; margin-bottom: 30px; }
+            .login-icon { width: 50px; height: 50px; background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; color: #4ade80; font-size: 20px; }
+            .login-header h2 { color: white; font-size: 20px; font-weight: 500; }
+            .form-group { margin-bottom: 20px; }
+            .form-label { color: #94a3b8; font-size: 14px; margin-bottom: 6px; display: block; }
+            .form-input { width: 100%; padding: 12px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 15px; transition: all 0.2s; }
+            .form-input:focus { outline: none; border-color: #4ade80; background: rgba(255, 255, 255, 0.08); }
+            .form-input::placeholder { color: #64748b; }
+            .error-msg { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center; display: ''' + ('block' if error else 'none') + '''; }
+            .login-btn { width: 100%; padding: 12px; background: #4ade80; border: none; border-radius: 8px; color: white; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; margin-top: 5px; }
+            .login-btn:hover { background: #22c55e; transform: translateY(-1px); }
+            .back-link { text-align: center; margin-top: 20px; }
+            .back-link a { color: #94a3b8; text-decoration: none; font-size: 14px; transition: color 0.2s; }
+            .back-link a:hover { color: #4ade80; }
+            @media (max-width: 480px) { .login-box { padding: 30px 25px; } .login-icon { width: 45px; height: 45px; font-size: 18px; } }
         </style>
     </head>
     <body>
@@ -406,13 +316,10 @@ def admin_login():
         </div>
         
         <script>
-            // Auto-hide error after 4 seconds
             setTimeout(() => {
                 const error = document.getElementById('errorMsg');
                 if (error) error.style.display = 'none';
             }, 4000);
-            
-            // Auto-focus on email field
             document.querySelector('input[name="email"]').focus();
         </script>
     </body>
@@ -580,25 +487,9 @@ def admin_clicks():
                           admin_email=session.get('admin_email', 'Admin'),
                           clicks=clicks_data)
 
-# ============ INITIALIZE DATABASE ============
-def init_db():
-    """Create database tables"""
-    with app.app_context():
-        db.create_all()
-        print("✅ Database initialized successfully")
-        print(f"📊 Current visitors: {Visitor.query.count()}")
-        print(f"🖱️ Current clicks: {Click.query.count()}")
-
 # ============ MAIN ============
 if __name__ == '__main__':
-    # Delete old database if exists to avoid errors
-    if os.path.exists('tradepass.db'):
-        try:
-            os.remove('tradepass.db')
-            print("🗑️  Old database removed")
-        except:
-            pass
-    
+    # Initialize database
     init_db()
     
     print("\n" + "="*60)
@@ -615,11 +506,7 @@ if __name__ == '__main__':
     print(f"   Email:    {ADMIN_EMAIL}")
     print(f"   Password: {ADMIN_PASSWORD}")
     print("="*60)
-    print("📈 FEATURES:")
-    print("• Clean login page - NO credentials shown")
-    print("• Real IP tracking with hashing")
-    print("• Every click tracked")
-    print("• Professional admin panel")
+    print("📈 DATABASE: ", "PostgreSQL" if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI'] else "SQLite")
     print("="*60 + "\n")
     
     app.run(debug=True, port=5000)
