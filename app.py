@@ -487,7 +487,8 @@ def admin_clicks():
                           admin_email=session.get('admin_email', 'Admin'),
                           clicks=clicks_data)
 
-# ============ MAIN ============
+init_db()
+
 if __name__ == '__main__':
     # Initialize database
     init_db()
@@ -510,3 +511,4 @@ if __name__ == '__main__':
     print("="*60 + "\n")
     
     app.run(debug=True, port=5000)
+
