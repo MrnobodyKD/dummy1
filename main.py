@@ -1,6 +1,8 @@
-from app import app, db
+from app import app
 
-# Create tables if they don't exist
-with app.app_context():
-    db.create_all()
-    print("✅ Database tables created/verified")
+# Don't initialize database here - let app handle it
+print("🚀 Starting TradePass on Railway...")
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8080, debug=False)  # debug=False for production
+
